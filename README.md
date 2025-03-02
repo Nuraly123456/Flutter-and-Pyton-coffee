@@ -1,17 +1,129 @@
 # lesson2
 
-lesson 002.
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
-## Getting Started
+void main() {
+  runApp(MyApp());
+}
 
-This project is a starting point for a Flutter application.
+class MyApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: CoffeeOrderScreen(),
+    );
+  }
+}
 
-A few resources to get you started if this is your first Flutter project:
+class CoffeeOrderScreen extends StatefulWidget {
+  @override
+  _CoffeeOrderScreenState createState() => _CoffeeOrderScreenState();
+}
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+class _CoffeeOrderScreenState extends State<CoffeeOrderScreen> {
+  String selectedCoffee = "latte";
+  bool addMilk = false;
+  int sugar = 0;
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+  Future<void> submitOrder() async {
+    final response = await http.post(
+      Uri.parse('http://192.168.0.132:5000/order'),  // Өз серверіңіздегі IP-ді орнатыңыз
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode({
+        'coffee': selectedCoffee,
+        'milk': addMilk,
+        'sugar': sugar,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      final result = json.decode(response.body);
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('Тапсырыс нәтижесі'),
+          content: Text('Бағасы: ${result['total_price']} тг'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('OK'),
+            ),
+          ],
+        ),
+      );
+    } else {
+      // Қате туралы хабарлама көрсету
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('Қате'),
+          content: Text('Сіздің тапсырысыңыз қабылданбады.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('OK'),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text("☕ Кофе Тапсырыс")),
+      body: Padding(
+        padding: EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            DropdownButton<String>(
+              value: selectedCoffee,
+              items: ["espresso", "americano", "latte", "cappuccino", "mocha"]
+                  .map((coffee) => DropdownMenuItem(
+                value: coffee,
+                child: Text(coffee.toUpperCase()),
+              ))
+                  .toList(),
+              onChanged: (value) {
+                setState(() => selectedCoffee = value!);
+              },
+            ),
+            SwitchListTile(
+              title: Text("🥛 Сүт қосу (+200 тг)"),
+              value: addMilk,
+              onChanged: (value) {
+                setState(() => addMilk = value);
+              },
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text("🍬 Қант: $sugar шай қасық"),
+                Slider(
+                  min: 0,
+                  max: 3,
+                  divisions: 3,
+                  value: sugar.toDouble(),
+                  onChanged: (value) {
+                    setState(() => sugar = value.toInt());
+                  },
+                ),
+              ],
+            ),
+            SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: submitOrder,
+              child: Text("✅ Тапсырыс беру"),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 # Flutter-and-Pyton-coffee
